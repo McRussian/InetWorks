@@ -1,0 +1,6 @@
+[submodule "private"]
+	path = private
+	url = ../hse-base-cpp-private.git
+[submodule "grader"]
+	path = grader
+	url = ../hse-base-cpp-grader.git

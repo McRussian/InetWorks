@@ -1,0 +1,8 @@
+grade:
+  image: cr.yandex/crppmgcujiph4hvf0dup/hse-cxx-base-testenv
+  tags:
+    - solution
+  only:
+    - /^submits/.*$/
+  script:
+    - cd /opt/shad && PYTHONPATH=grader python3 -m grader
