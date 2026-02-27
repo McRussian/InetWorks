@@ -2,6 +2,6 @@
 #define NUMBER_H
 #include "complex.h"
 // Определение абстрактного типа number как double
-typedef double number;
+typedef TComplex number;
 
 #endif // NUMBER_H
