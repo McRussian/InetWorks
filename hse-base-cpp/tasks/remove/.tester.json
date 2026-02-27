@@ -1,0 +1,6 @@
+{
+    "allow_change": "remove.h",
+    "tests": "test_remove",
+    "solutions": "private"
+  }
+  

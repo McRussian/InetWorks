@@ -1,0 +1,6 @@
+{
+    "allow_change": "enumerate.h",
+    "tests": "test_enumerate",
+    "solutions": "private"
+  }
+  

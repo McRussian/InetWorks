@@ -1,0 +1,5 @@
+{
+  "allow_change": "bitops.cpp",
+  "tests": "test_bitops",
+  "solutions": "private"
+}

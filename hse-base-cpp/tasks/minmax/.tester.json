@@ -1,0 +1,6 @@
+{
+    "allow_change": "minmax.h",
+    "tests": "test_minmax",
+    "solutions": "private"
+  }
+  

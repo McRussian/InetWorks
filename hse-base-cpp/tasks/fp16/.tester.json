@@ -1,0 +1,6 @@
+{
+  "allow_change": ["fp16.cpp"],
+  "tests": "test_fp16",
+  "solutions": ["fp16.cpp"],
+  "forbidden_regexp": ["memcpy", "reinterpret_cast", "union", "bit_cast"]
+}

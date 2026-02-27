@@ -1,0 +1,42 @@
+- group:    00-setup
+  start:    13-01-2026 00:00
+  deadline: 24-03-2026 23:59
+  tasks:
+    - task: multiplication
+      score: 100
+
+- group: 01-numbers
+  start:    27-01-2026 09:00
+  deadline: 10-02-2026 23:59
+  tasks:
+    - task: palindrome
+      score: 100
+    - task: password
+      score: 100
+    - task: varint
+      score: 200
+    - task: bitops
+      score: 200
+    - task: safe_arithmetic
+      score: 200
+    - task: fp16
+      score: 400
+
+- group: 02-classes
+  start:    18-02-2026 09:00
+  deadline: 04-03-2026 23:59
+  tasks:
+    - task: enumerate
+      score: 100
+    - task: defer
+      score: 100
+    - task: lru_cache
+      score: 100
+    - task: interpreter
+      score: 200
+    - task: bpe_tokenizer
+      score: 200
+    - task: http_builder
+      score: 300
+    - task: search
+      score: 300

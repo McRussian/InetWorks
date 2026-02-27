@@ -1,0 +1,3 @@
+/home/andrey/Programming/CPP/hse-base-cpp/tasks/image_processor/CMakeFiles/image_processor.dir
+/home/andrey/Programming/CPP/hse-base-cpp/tasks/image_processor/CMakeFiles/edit_cache.dir
+/home/andrey/Programming/CPP/hse-base-cpp/tasks/image_processor/CMakeFiles/rebuild_cache.dir

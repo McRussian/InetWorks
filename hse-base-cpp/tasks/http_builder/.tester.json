@@ -1,0 +1,5 @@
+{
+  "allow_change": ["http_builder.cpp", "http_builder.h"],
+  "tests": "test_http_builder",
+  "solutions": "private"
+}

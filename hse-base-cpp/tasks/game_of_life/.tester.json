@@ -1,0 +1,5 @@
+{
+    "allow_change": ["game_of_life.cpp", "game_of_life.h"],
+    "tests": "test_game_of_life",
+    "solutions": "private"
+}

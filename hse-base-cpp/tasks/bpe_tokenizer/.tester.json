@@ -1,0 +1,5 @@
+{
+    "allow_change": ["bpe_tokenizer.cpp", "bpe_tokenizer.h"],
+    "tests": "test_bpe_tokenizer",
+    "solutions": "private"
+}

@@ -1,0 +1,5 @@
+{
+  "allow_change": "varint.cpp",
+  "tests": "test_varint",
+  "solutions": "private"
+}

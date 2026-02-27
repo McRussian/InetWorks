@@ -1,0 +1,5 @@
+{
+    "allow_change": "interpreter.cpp",
+    "tests": "test_interpreter",
+    "solutions": "private"
+}
