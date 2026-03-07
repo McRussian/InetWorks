@@ -1,22 +1,15 @@
-CONFIG += c++17 cmdline
+TEMPLATE = subdirs
 
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+# Поддиректории проекта
+SUBDIRS = \
+    common \
+    server \
+    client
 
-SOURCES += \
-        application.cpp \
-        array.cpp \
-        complex.cpp \
-        main.cpp
+# Порядок сборки: сначала common, потом server и client
+common.file = common/common.pro
+server.file = server/server.pro
+client.file = client/client.pro
 
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
-
-HEADERS += \
-    application.h \
-    array.h \
-    complex.h \
-    number.h
+server.depends = common
+client.depends = common
