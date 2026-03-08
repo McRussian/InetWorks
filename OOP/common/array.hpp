@@ -101,7 +101,6 @@ public:
     // Добавление/удаление в конец
     void pushBack(const T& value) {
         if (size == capacity) {
-            // Автоматически увеличиваем capacity при необходимости
             size_t newCapacity = (capacity == 0) ? 1 : capacity * 2;
             reserve(newCapacity);
         }
@@ -183,7 +182,6 @@ std::istream& operator>>(std::istream& in, Array<T>& arr) {
     size_t n;
     in >> n;
 
-    // Очищаем текущий массив
     delete[] arr.data;
 
     arr.capacity = n;

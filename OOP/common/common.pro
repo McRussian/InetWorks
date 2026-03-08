@@ -12,17 +12,15 @@ QT += widgets
 
 # Исходные файлы
 HEADERS += \
+    array.hpp \
     number.h \
     complex.h \
-    array.h \
-    polinom.h \
     application.h \
+    polinom.hpp \
     windowapplication.h
 
 SOURCES += \
     complex.cpp \
-    array.cpp \
-    polinom.cpp \
     application.cpp \
     windowapplication.cpp
 
