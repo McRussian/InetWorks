@@ -11,4 +11,6 @@ add_executable(image_processor
     src/color.cpp
     src/image.cpp
     src/loader.cpp
+    src/filter.cpp
+    src/crop_filter.cpp
 )
