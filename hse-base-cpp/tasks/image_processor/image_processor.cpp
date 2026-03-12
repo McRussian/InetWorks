@@ -9,6 +9,7 @@
 #include "src/grayscale_filter.h"
 #include "src/negative_filter.h"
 #include "src/sharp_filter.h"
+#include "src/edge_filter.h"
 
 using namespace std;
 
@@ -24,17 +25,15 @@ void ShowHelp() {
     cout << "  -neg                     - преобразует в негатив" << endl;
     cout << "                            по формуле: R' = 255 - R, G' = 255 - G, B' = 255 - B" << endl;
     cout << "  -sharp                   - повышение резкости" << endl;
-    cout << "                            с использованием матрицы:" << endl;
-    cout << "                            [-1 -1 -1]" << endl;
-    cout << "                            [-1  9 -1]" << endl;
-    cout << "                            [-1 -1 -1]" << endl;
+    cout << "  -edge <threshold>        - выделение границ" << endl;
     cout << endl;
     cout << "Examples:" << endl;
     cout << "  image_processor foto.bmp result.bmp -crop 800 600" << endl;
     cout << "  image_processor foto.bmp result.bmp -gs" << endl;
     cout << "  image_processor foto.bmp result.bmp -neg" << endl;
     cout << "  image_processor foto.bmp result.bmp -sharp" << endl;
-    cout << "  image_processor foto.bmp result.bmp -crop 800 600 -gs -neg -sharp" << endl;
+    cout << "  image_processor foto.bmp result.bmp -edge 50" << endl;
+    cout << "  image_processor foto.bmp result.bmp -crop 800 600 -gs -neg -sharp -edge 30" << endl;
 }
 
 Filter* CreateFilter(const string& name, const vector<string>& args) {
@@ -73,6 +72,16 @@ Filter* CreateFilter(const string& name, const vector<string>& args) {
         
         return new SharpeningFilter();
     }
+        else if (name == "edge") {  // Фильтр Edge Detection
+        if (args.size() != 1) {
+            cout << "Ошибка: фильтр edge требует 1 параметр (порог)" << endl;
+            return nullptr;
+        }
+        
+        float threshold = stof(args[0]);
+        return new EdgeFilter(threshold);
+    }
+
     // Если фильтр не найден
     cout << "Ошибка: неизвестный фильтр '" << name << "'" << endl;
     return nullptr;
