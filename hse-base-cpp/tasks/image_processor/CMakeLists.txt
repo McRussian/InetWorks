@@ -17,4 +17,5 @@ add_executable(image_processor
     src/negative_filter.cpp
     src/sharp_filter.cpp
     src/edge_filter.cpp
+    src/blur_filter.cpp
 )

@@ -10,6 +10,7 @@
 #include "src/negative_filter.h"
 #include "src/sharp_filter.h"
 #include "src/edge_filter.h"
+#include "src/blur_filter.h"
 
 using namespace std;
 
@@ -26,6 +27,8 @@ void ShowHelp() {
     cout << "                            по формуле: R' = 255 - R, G' = 255 - G, B' = 255 - B" << endl;
     cout << "  -sharp                   - повышение резкости" << endl;
     cout << "  -edge <threshold>        - выделение границ" << endl;
+    cout << "  -blur <sigma>            - Гауссово размытие с параметром sigma" << endl;
+    cout << "                            (чем больше sigma, тем сильнее размытие)" << endl;
     cout << endl;
     cout << "Examples:" << endl;
     cout << "  image_processor foto.bmp result.bmp -crop 800 600" << endl;
@@ -33,7 +36,8 @@ void ShowHelp() {
     cout << "  image_processor foto.bmp result.bmp -neg" << endl;
     cout << "  image_processor foto.bmp result.bmp -sharp" << endl;
     cout << "  image_processor foto.bmp result.bmp -edge 50" << endl;
-    cout << "  image_processor foto.bmp result.bmp -crop 800 600 -gs -neg -sharp -edge 30" << endl;
+    cout << "  image_processor foto.bmp result.bmp -blur 2.5" << endl;
+    cout << "  image_processor foto.bmp result.bmp -crop 800 600 -gs -neg -sharp -edge 30 -blur 1.5" << endl;
 }
 
 Filter* CreateFilter(const string& name, const vector<string>& args) {
@@ -80,6 +84,15 @@ Filter* CreateFilter(const string& name, const vector<string>& args) {
         
         float threshold = stof(args[0]);
         return new EdgeFilter(threshold);
+    }
+        else if (name == "blur") {  // Фильтр Gaussian Blur
+        if (args.size() != 1) {
+            cout << "Ошибка: фильтр blur требует 1 параметр (sigma)" << endl;
+            return nullptr;
+        }
+        
+        double sigma = stod(args[0]);
+        return new GaussianBlurFilter(sigma);
     }
 
     // Если фильтр не найден
