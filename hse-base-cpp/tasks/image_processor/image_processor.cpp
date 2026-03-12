@@ -6,6 +6,9 @@
 #include "src/image.h"
 #include "src/loader.h"
 #include "src/crop_filter.h"
+#include "src/grayscale_filter.h"
+#include "src/negative_filter.h"
+#include "src/sharp_filter.h"
 
 using namespace std;
 
@@ -16,13 +19,24 @@ void ShowHelp() {
     cout << "Filters:" << endl;
     cout << "  -crop <width> <height>  - обрезает изображение до указанных размеров" << endl;
     cout << "                            (левая верхняя часть)" << endl;
+    cout << "  -gs                      - преобразует в оттенки серого" << endl;
+    cout << "                            по формуле: 0.299R + 0.587G + 0.114B" << endl;
+    cout << "  -neg                     - преобразует в негатив" << endl;
+    cout << "                            по формуле: R' = 255 - R, G' = 255 - G, B' = 255 - B" << endl;
+    cout << "  -sharp                   - повышение резкости" << endl;
+    cout << "                            с использованием матрицы:" << endl;
+    cout << "                            [-1 -1 -1]" << endl;
+    cout << "                            [-1  9 -1]" << endl;
+    cout << "                            [-1 -1 -1]" << endl;
     cout << endl;
-    cout << "Example:" << endl;
+    cout << "Examples:" << endl;
     cout << "  image_processor foto.bmp result.bmp -crop 800 600" << endl;
+    cout << "  image_processor foto.bmp result.bmp -gs" << endl;
+    cout << "  image_processor foto.bmp result.bmp -neg" << endl;
+    cout << "  image_processor foto.bmp result.bmp -sharp" << endl;
+    cout << "  image_processor foto.bmp result.bmp -crop 800 600 -gs -neg -sharp" << endl;
 }
 
-
-// Функция для создания фильтра по имени и параметрам
 Filter* CreateFilter(const string& name, const vector<string>& args) {
     if (name == "crop") {
         if (args.size() != 2) {
@@ -30,13 +44,35 @@ Filter* CreateFilter(const string& name, const vector<string>& args) {
             return nullptr;
         }
         
-        // Преобразуем строки в числа
         int width = stoi(args[0]);
         int height = stoi(args[1]);
         
         return new CropFilter(width, height);
     }
-    
+    else if (name == "gs") {
+        if (!args.empty()) {
+            cout << "Ошибка: фильтр gs не принимает параметров" << endl;
+            return nullptr;
+        }
+        
+        return new GrayscaleFilter();
+    }
+    else if (name == "neg") {  // Фильтр Negative
+        if (!args.empty()) {
+            cout << "Ошибка: фильтр neg не принимает параметров" << endl;
+            return nullptr;
+        }
+        
+        return new NegativeFilter();
+    }
+    else if (name == "sharp") {  // Фильтр Sharpening
+        if (!args.empty()) {
+            cout << "Ошибка: фильтр sharp не принимает параметров" << endl;
+            return nullptr;
+        }
+        
+        return new SharpeningFilter();
+    }
     // Если фильтр не найден
     cout << "Ошибка: неизвестный фильтр '" << name << "'" << endl;
     return nullptr;

@@ -1,12 +1,9 @@
 #ifndef CLIENTAPPLICATION_H
 #define CLIENTAPPLICATION_H
+#include <QPushButton>
 
 #include "windowapplication.h"
 #include "clientcommunicator.h"
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QGroupBox>
 
 class ClientApplication : public WindowApplication
 {
@@ -15,26 +12,30 @@ class ClientApplication : public WindowApplication
 private:
     ClientCommunicator* communicator;
 
-    // Дополнительные элементы интерфейса
+    // Элементы интерфейса
     QLineEdit* serverIpEdit;
     QLineEdit* serverPortEdit;
+    QComboBox* typeComboBox;      // Выбор типа для запроса
     QPushButton* connectButton;
-    QPushButton* syncButton;
+    QPushButton* disconnectButton;
+    QPushButton* requestButton;
     QLabel* connectionStatusLabel;
 
     void setupNetworkUI();
 
 private slots:
     void onConnectButtonClicked();
-    void onSyncButtonClicked();
+    void onDisconnectButtonClicked();
+    void onRequestButtonClicked();
     void onConnected();
     void onDisconnected();
     void onConnectionTimeout();
     void onCommunicatorError(const QString& error);
-    void onPolinomReceived(const Polinom& receivedPolinom);
+    void onPolinomReceived(const Polinom<double>& polinom);
+    void onPolinomReceived(const Polinom<TComplex>& polinom);
 
 public:
-    explicit ClientApplication(QWidget* parent = nullptr);
+    explicit ClientApplication(QWidget *parent = nullptr);
     ~ClientApplication();
 };
 

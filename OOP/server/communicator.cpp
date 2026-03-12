@@ -5,30 +5,33 @@
 using namespace std;
 
 Communicator::Communicator(QObject* parent)
-    : QObject(parent), udpSocket(nullptr), clientPort(0), hasClient(false)
+    : QObject(parent), udpSocket(nullptr), clientPort(0), hasClient(false), clientType(1)
 {
+    cout << "[Communicator] Создан" << endl;
 }
 
 Communicator::~Communicator()
 {
+    cout << "[Communicator] Уничтожен" << endl;
     stop();
 }
 
 bool Communicator::start(quint16 port)
 {
+    cout << "[Communicator] Запуск на порту " << port << endl;
+
     udpSocket = new QUdpSocket(this);
 
-    // Принудительно используем IPv4
     bool bound = udpSocket->bind(QHostAddress::AnyIPv4, port);
 
     if (!bound) {
-        cout << "Ошибка: не удалось запустить UDP сервер на порту " << port << endl;
-        cout << "Ошибка: " << udpSocket->errorString().toStdString() << endl;
+        cout << "[Communicator] Ошибка: не удалось запустить UDP сервер на порту " << port << endl;
+        cout << "[Communicator] Ошибка: " << udpSocket->errorString().toStdString() << endl;
         return false;
     }
 
-    cout << "✓ UDP коммуникатор запущен на порту: " << port << endl;
-    cout << "  Адрес: " << udpSocket->localAddress().toString().toStdString() << endl;
+    cout << "[Communicator] ✓ UDP коммуникатор запущен на порту: " << port << endl;
+    cout << "[Communicator]   Адрес: " << udpSocket->localAddress().toString().toStdString() << endl;
 
     connect(udpSocket, &QUdpSocket::readyRead, this, &Communicator::onReadyRead);
 
@@ -37,17 +40,26 @@ bool Communicator::start(quint16 port)
 
 void Communicator::stop()
 {
+    cout << "[Communicator] Остановка" << endl;
+
     if (udpSocket) {
         udpSocket->close();
         udpSocket->deleteLater();
         udpSocket = nullptr;
     }
     hasClient = false;
+    cout << "[Communicator] Остановлен" << endl;
 }
 
 bool Communicator::isClientConnected() const
 {
     return hasClient;
+}
+
+void Communicator::setDataType(int type)
+{
+    clientType = type;
+    cout << "[Communicator] Установлен тип данных: " << (type == 1 ? "double" : "TComplex") << endl;
 }
 
 void Communicator::onReadyRead()
@@ -64,17 +76,16 @@ void Communicator::onReadyRead()
 
         // Конвертируем в IPv4 если возможно
         if (senderAddress.protocol() == QAbstractSocket::IPv6Protocol) {
-            // Проверяем, является ли адрес IPv4-mapped IPv6 адресом (::ffff:xxx.xxx.xxx.xxx)
             QString addrStr = senderAddress.toString();
             if (addrStr.startsWith("::ffff:")) {
-                QString ipv4Str = addrStr.mid(7); // Убираем "::ffff:"
+                QString ipv4Str = addrStr.mid(7);
                 senderAddress = QHostAddress(ipv4Str);
             }
         }
 
         QString request = QString::fromUtf8(datagram).trimmed();
 
-        cout << "Получен UDP запрос от "
+        cout << "\n[Communicator] Получен UDP запрос от "
              << senderAddress.toString().toStdString()
              << ":" << senderPort << " - "
              << request.toStdString() << endl;
@@ -88,34 +99,52 @@ void Communicator::onReadyRead()
             QString response = "HELLO_ACK";
             udpSocket->writeDatagram(response.toUtf8(), clientAddress, clientPort);
 
-            cout << "✓ Клиент зарегистрирован: "
+            cout << "[Communicator] ✓ Клиент зарегистрирован: "
                  << clientAddress.toString().toStdString()
                  << ":" << clientPort << endl;
 
             emit clientConnected(clientAddress, clientPort);
         }
+        else if (request.startsWith("TYPE:")) {
+            // Клиент сообщает свой тип данных
+            QString typeStr = request.mid(5);
+            if (typeStr == "DOUBLE") {
+                clientType = 1;
+                cout << "[Communicator]   → Клиент использует тип: double" << endl;
+            } else if (typeStr == "COMPLEX") {
+                clientType = 2;
+                cout << "[Communicator]   → Клиент использует тип: TComplex" << endl;
+            }
+            emit dataTypeReceived(clientType);
+        }
         else if (request == "GET_POLINOM") {
             if (senderAddress == clientAddress && senderPort == clientPort && hasClient) {
-                cout << "  → Запрос полинома" << endl;
+                cout << "[Communicator]   → Запрос полинома (тип: "
+                     << (clientType == 1 ? "double" : "complex") << ")" << endl;
+
+                cout << "[Communicator]   → Испускаем сигнал polinomRequested" << endl;
                 emit polinomRequested();
+                cout << "[Communicator]   → Сигнал испущен" << endl;
             } else {
-                cout << "  → Отклонен запрос от неизвестного клиента" << endl;
+                cout << "[Communicator]   → Отклонен запрос от неизвестного клиента" << endl;
             }
         }
         else if (request == "BYE") {
             if (senderAddress == clientAddress && senderPort == clientPort && hasClient) {
                 hasClient = false;
-                cout << "✗ Клиент отключился" << endl;
+                cout << "[Communicator] ✗ Клиент отключился" << endl;
                 emit clientDisconnected();
             }
         }
     }
 }
 
-void Communicator::sendPolinomToClient(const Polinom& polinom, bool polinomExists)
+void Communicator::sendPolinomToClient(const Polinom<double>& polinom, bool polinomExists)
 {
+    cout << "\n[Communicator] sendPolinomToClient(double) вызван" << endl;
+
     if (!hasClient) {
-        cout << "Нет подключенного клиента для отправки" << endl;
+        cout << "[Communicator] Нет подключенного клиента для отправки" << endl;
         return;
     }
 
@@ -123,7 +152,7 @@ void Communicator::sendPolinomToClient(const Polinom& polinom, bool polinomExist
 
     if (!polinomExists) {
         response = "ERROR:No polinom on server";
-        cout << "  → Отправлен ответ: ERROR (полином не создан)" << endl;
+        cout << "[Communicator]   → Отправлен ответ: ERROR (полином не создан)" << endl;
     } else {
         // Формируем строковое представление полинома
         stringstream ss;
@@ -131,24 +160,65 @@ void Communicator::sendPolinomToClient(const Polinom& polinom, bool polinomExist
         ss << "LEADING:" << polinom.getLeadingCoeff() << ";";
 
         // Корни
-        const Array& roots = polinom.getRoots();
+        const Array<double>& roots = polinom.getRoots();
         ss << "ROOTS:";
+        cout << "[Communicator]   → Корни (" << roots.getSize() << "): ";
         for (size_t i = 0; i < roots.getSize(); ++i) {
-            if (i > 0) ss << ",";
+            if (i > 0) {
+                ss << ",";
+                cout << ", ";
+            }
             ss << roots[i];
+            cout << roots[i];
         }
-        ss << ";";
-
-        // Коэффициенты
-        ss << "COEFFS:";
-        for (size_t i = 0; i <= polinom.getDegree(); ++i) {
-            if (i > 0) ss << ",";
-            ss << polinom.getCoefficient(i);
-        }
+        cout << endl;
 
         response = QString::fromStdString(ss.str());
-        cout << "  → Отправлен полином (степень " << polinom.getDegree() << ")" << endl;
+        cout << "[Communicator]   → Отправляем строку: " << response.toStdString() << endl;
     }
 
-    udpSocket->writeDatagram(response.toUtf8(), clientAddress, clientPort);
+    qint64 sent = udpSocket->writeDatagram(response.toUtf8(), clientAddress, clientPort);
+    cout << "[Communicator]   → Отправлено байт: " << sent << endl;
+}
+
+void Communicator::sendPolinomToClient(const Polinom<TComplex>& polinom, bool polinomExists)
+{
+    cout << "\n[Communicator] sendPolinomToClient(TComplex) вызван" << endl;
+
+    if (!hasClient) {
+        cout << "[Communicator] Нет подключенного клиента для отправки" << endl;
+        return;
+    }
+
+    QString response;
+
+    if (!polinomExists) {
+        response = "ERROR:No polinom on server";
+        cout << "[Communicator]   → Отправлен ответ: ERROR (полином не создан)" << endl;
+    } else {
+        // Формируем строковое представление полинома
+        stringstream ss;
+        ss << "DEGREE:" << polinom.getDegree() << ";";
+        ss << "LEADING:" << polinom.getLeadingCoeff() << ";";
+
+        // Корни
+        const Array<TComplex>& roots = polinom.getRoots();
+        ss << "ROOTS:";
+        cout << "[Communicator]   → Корни (" << roots.getSize() << "): ";
+        for (size_t i = 0; i < roots.getSize(); ++i) {
+            if (i > 0) {
+                ss << ",";
+                cout << ", ";
+            }
+            ss << roots[i];
+            cout << roots[i];
+        }
+        cout << endl;
+
+        response = QString::fromStdString(ss.str());
+        cout << "[Communicator]   → Отправляем строку: " << response.toStdString() << endl;
+    }
+
+    qint64 sent = udpSocket->writeDatagram(response.toUtf8(), clientAddress, clientPort);
+    cout << "[Communicator]   → Отправлено байт: " << sent << endl;
 }

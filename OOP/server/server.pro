@@ -6,13 +6,18 @@ TARGET = server
 
 # Подключаем общую библиотеку
 INCLUDEPATH += ../common
-LIBS += -L../common -lcommon
 
-# Для отладочной сборки
+# В зависимости от конфигурации подключаем нужную библиотеку
 CONFIG(debug, debug|release) {
+    # Отладочная сборка
     LIBS += -L../common -lcommond
+    PRE_TARGETDEPS += ../common/libcommond.a
+    message("Using debug library: libcommond.a")
 } else {
+    # Релизная сборка
     LIBS += -L../common -lcommon
+    PRE_TARGETDEPS += ../common/libcommon.a
+    message("Using release library: libcommon.a")
 }
 
 # Исходные файлы сервера
@@ -28,10 +33,5 @@ SOURCES += \
 # Qt модули
 QT += core network
 
-# Зависимость от сборки общей библиотеки
-PRE_TARGETDEPS += ../common/libcommon.a
-
-# Для отладочной сборки
-CONFIG(debug, debug|release) {
-    PRE_TARGETDEPS += ../common/libcommond.a
-}
+# Для корректной работы с потоками
+DEFINES += QT_USE_QSTRINGBUILDER

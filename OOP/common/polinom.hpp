@@ -33,29 +33,26 @@ private:
         for (size_t i = 1; i < n; ++i) {
             Array<T> newCoeff;
 
+            // Сначала добавляем нули для всех позиций
+            for (size_t j = 0; j <= coeff.getSize(); ++j) {
+                newCoeff.pushBack(T(0));
+            }
+
             // Умножение на x: сдвиг коэффициентов вверх
             for (size_t j = 0; j < coeff.getSize(); ++j) {
-                if (j + 1 >= newCoeff.getSize()) {
-                    newCoeff.pushBack(coeff[j]);
-                } else {
-                    newCoeff[j + 1] = newCoeff[j + 1] + coeff[j];
-                }
+                newCoeff[j + 1] = newCoeff[j + 1] + coeff[j];
             }
 
             // Умножение на -roots[i]: добавление без сдвига
             for (size_t j = 0; j < coeff.getSize(); ++j) {
-                if (j >= newCoeff.getSize()) {
-                    newCoeff.pushBack((-roots[i]) * coeff[j]);
-                } else {
-                    newCoeff[j] = newCoeff[j] + (-roots[i]) * coeff[j];
-                }
+                newCoeff[j] = newCoeff[j] + (-roots[i]) * coeff[j];
             }
 
             coeff = newCoeff;
         }
 
         // Умножаем на старший коэффициент
-        coefficients = Array<T>(coeff.getSize());
+        coefficients = Array<T>();
         for (size_t i = 0; i < coeff.getSize(); ++i) {
             coefficients.pushBack(leadingCoeff * coeff[i]);
         }
@@ -66,7 +63,7 @@ private:
 public:
     // Конструктор по умолчанию - полином 0-й степени (константа 0)
     Polinom() : roots(), leadingCoeff(T(0)), coefficients(), coeffValid(false) {
-        coefficients = Array<T>();
+        coefficients.pushBack(T(0));
         coeffValid = true;
     }
 
@@ -76,8 +73,7 @@ public:
             roots.pushBack(T(0));
         }
         if (n == 0) {
-            coefficients = Array<T>(1);
-            coefficients[0] = T(1);
+            coefficients.pushBack(T(1));
             coeffValid = true;
         } else {
             calculateCoefficients();
@@ -105,6 +101,7 @@ public:
         for (size_t i = 0; i < rootArray.getSize(); ++i) {
             roots.pushBack(rootArray[i]);
         }
+
         calculateCoefficients();
     }
 
@@ -158,8 +155,6 @@ public:
         if (index >= roots.getSize()) {
             throw std::out_of_range("Polinom::setRoot: index out of range");
         }
-        // Временно: для доступа по индексу нужно, чтобы массив уже имел этот размер
-        // Но мы используем pushBack для добавления, поэтому нужно создать новый массив
         Array<T> newRoots;
         for (size_t i = 0; i < roots.getSize(); ++i) {
             if (i == index) {
@@ -193,7 +188,7 @@ public:
         size_t n = roots.getSize();
 
         if (n == 0) {
-            return leadingCoeff; // Константа
+            return leadingCoeff;
         }
 
         T result = leadingCoeff;

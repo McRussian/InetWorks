@@ -1,173 +1,16 @@
 #include "serverapplication.h"
-#include <QCoreApplication>
 #include <iostream>
+#include <sstream>
+#include <QCoreApplication>
+#include <QMetaMethod>
 
 using namespace std;
 
-// ==================== ServerWorker ====================
+// ==================== MenuWorker ====================
 
-ServerWorker::ServerWorker(QObject* parent)
-    : QObject(parent), communicator(nullptr), polinomExists(false)
+void MenuWorker::run()
 {
-    // Communicator создается здесь - уже в правильном потоке
-    communicator = new Communicator(this);
-
-    // Подключаем сигналы коммуникатора к слотам ServerWorker
-    connect(communicator, &Communicator::polinomRequested,
-            this, &ServerWorker::onPolinomRequested);
-
-    connect(communicator, &Communicator::clientConnected,
-            this, &ServerWorker::onClientConnected);
-
-    connect(communicator, &Communicator::clientDisconnected,
-            this, &ServerWorker::onClientDisconnected);
-
-    connect(communicator, &Communicator::errorOccurred,
-            this, [this](const QString& err) {
-                emit logMessage("Ошибка: " + err);
-            });
-}
-
-ServerWorker::~ServerWorker()
-{
-    // communicator удалится автоматически как дочерний объект
-}
-
-void ServerWorker::startServer(quint16 port)
-{
-    emit logMessage("Запуск сервера на порту " + QString::number(port));
-
-    if (!communicator->start(port)) {
-        emit serverError("Не удалось запустить коммуникатор");
-        return;
-    }
-
-    emit serverStarted(port);
-}
-
-void ServerWorker::stopServer()
-{
-    if (communicator) {
-        communicator->stop();
-    }
-}
-
-void ServerWorker::updatePolinom(const Polinom& newPolinom, bool exists)
-{
-    polinom = newPolinom;
-    polinomExists = exists;
-}
-
-void ServerWorker::onPolinomRequested()
-{
-    emit logMessage("Запрос полинома от клиента");
-    communicator->sendPolinomToClient(polinom, polinomExists);
-}
-
-void ServerWorker::onClientConnected(const QHostAddress& address, quint16 port)
-{
-    emit logMessage("✓ Клиент подключен: " + address.toString() + ":" + QString::number(port));
-    emit clientConnected(address, port);
-}
-
-void ServerWorker::onClientDisconnected()
-{
-    emit logMessage("✗ Клиент отключен");
-    emit clientDisconnected();
-}
-
-// ==================== ServerApplication ====================
-
-ServerApplication::ServerApplication(QObject* parent)
-    : ConsoleApplication(parent), serverThread(nullptr), serverWorker(nullptr)
-{
-}
-
-ServerApplication::~ServerApplication()
-{
-    if (serverThread) {
-        serverThread->quit();
-        serverThread->wait();
-        delete serverThread;
-    }
-}
-
-bool ServerApplication::start(quint16 port)
-{
-    cout << "===========================================================================\n";
-    cout << "    СЕРВЕР ДЛЯ РАБОТЫ С ПОЛИНОМОМ\n";
-    cout << "===========================================================================\n";
-
-    // Создаем поток
-    serverThread = new QThread(this);
-
-    // Создаем worker (пока еще в главном потоке)
-    serverWorker = new ServerWorker();
-
-    // Подключаем сигналы от worker к главному потоку
-    connect(serverWorker, &ServerWorker::serverStarted,
-            this, &ServerApplication::onServerStarted, Qt::QueuedConnection);
-    connect(serverWorker, &ServerWorker::serverError,
-            this, &ServerApplication::onServerError, Qt::QueuedConnection);
-    connect(serverWorker, &ServerWorker::clientConnected,
-            this, &ServerApplication::onClientConnected, Qt::QueuedConnection);
-    connect(serverWorker, &ServerWorker::clientDisconnected,
-            this, &ServerApplication::onClientDisconnected, Qt::QueuedConnection);
-    connect(serverWorker, &ServerWorker::logMessage,
-            this, &ServerApplication::onLogMessage, Qt::QueuedConnection);
-
-    // Перемещаем worker в отдельный поток
-    serverWorker->moveToThread(serverThread);
-
-    // Запускаем сервер в отдельном потоке
-    connect(serverThread, &QThread::started,
-            [=]() { serverWorker->startServer(port); });
-
-    // Очистка при завершении потока
-    connect(serverThread, &QThread::finished,
-            serverWorker, &QObject::deleteLater);
-
-    // Запускаем поток
-    serverThread->start();
-
-    return true;
-}
-
-void ServerApplication::onServerStarted(quint16 port)
-{
-    cout << "✓ Сервер запущен на порту " << port << endl;
-    cout << "Серверное приложение готово к работе\n\n";
-}
-
-void ServerApplication::onServerError(const QString& error)
-{
-    cerr << "✗ Ошибка сервера: " << error.toStdString() << endl;
-}
-
-void ServerApplication::onClientConnected(const QHostAddress& address, quint16 port)
-{
-    cout << "\n✓ Клиент подключен: "
-         << address.toString().toStdString()
-         << ":" << port << endl;
-}
-
-void ServerApplication::onClientDisconnected()
-{
-    cout << "\n✗ Клиент отключен\n";
-}
-
-void ServerApplication::onLogMessage(const QString& message)
-{
-    cout << "[SERVER] " << message.toStdString() << endl;
-}
-
-void ServerApplication::run()
-{
-    // Запускаем меню в основном потоке
-    while (running) {
-        showMenu();
-        cout << "> ";
-
+    while (true) {
         int choice;
         cin >> choice;
 
@@ -178,61 +21,396 @@ void ServerApplication::run()
             continue;
         }
 
-        switch (choice) {
-        case 1:
-            handleInput();
-            // Отправляем обновленный полином в серверный поток
-            if (serverWorker && polinomExists) {
-                QMetaObject::invokeMethod(serverWorker, "updatePolinom",
-                                          Qt::QueuedConnection,
-                                          Q_ARG(Polinom, polinom),
-                                          Q_ARG(bool, polinomExists));
+        if (choice == 1) {
+            // Ввод полинома double
+            cout << "\n=== Ввод нового полинома (double) ===\n";
+            cout << "Формат: an degree r1 r2 ... rn\n";
+            cout << "Пример: 2 3 1 2 3\n";
+            cout << "Ваш ввод: ";
+
+            double an;
+            size_t degree;
+
+            cin >> an >> degree;
+
+            if (cin.fail()) {
+                cout << "Ошибка ввода!\n";
+                cin.clear();
+                cin.ignore(10000, '\n');
+                continue;
             }
-            break;
-        case 2:
-            handleChangeCoeffOrRoot();
-            if (serverWorker && polinomExists) {
-                QMetaObject::invokeMethod(serverWorker, "updatePolinom",
-                                          Qt::QueuedConnection,
-                                          Q_ARG(Polinom, polinom),
-                                          Q_ARG(bool, polinomExists));
+
+            DoublePolinomData data;
+            data.an = an;
+            data.degree = degree;
+
+            bool ok = true;
+            for (size_t i = 0; i < degree; ++i) {
+                double root;
+                cin >> root;
+                if (cin.fail()) {
+                    cout << "Ошибка ввода корня " << i << "!\n";
+                    cin.clear();
+                    cin.ignore(10000, '\n');
+                    ok = false;
+                    break;
+                }
+                data.roots.push_back(root);
             }
-            break;
-        case 3:
-            handleEvaluate();
-            break;
-        case 4:
-            handleResize();
-            if (serverWorker && polinomExists) {
-                QMetaObject::invokeMethod(serverWorker, "updatePolinom",
-                                          Qt::QueuedConnection,
-                                          Q_ARG(Polinom, polinom),
-                                          Q_ARG(bool, polinomExists));
+
+            if (ok) {
+                emit doublePolinomDataReady(data);
             }
-            break;
-        case 5:
-            handleDisplayForm1();
-            break;
-        case 6:
-            handleDisplayForm2();
-            break;
-        case 7:
-            handlePrintRoots();
-            break;
-        case 8:
-            handlePrintCoeffs();
-            break;
-        case 0:
-            cout << "Завершение работы сервера...\n";
-            running = false;
-            if (serverThread) {
-                serverThread->quit();
-                serverThread->wait();
+        }
+        else if (choice == 2) {
+            // Ввод полинома complex
+            cout << "\n=== Ввод нового полинома (TComplex) ===\n";
+            cout << "Формат: an degree r1 r2 ... rn\n";
+            cout << "Пример: (1,0) 2 (1,0) (2,0)\n";
+            cout << "Ваш ввод: ";
+
+            // Очищаем буфер
+            cin.clear();
+            cin.ignore(10000, '\n');
+
+            string line;
+            getline(cin, line);
+
+            while (line.empty()) {
+                getline(cin, line);
             }
-            QCoreApplication::quit();
+
+            stringstream ss(line);
+
+            TComplex an;
+            ss >> an;
+            if (ss.fail()) {
+                cout << "Ошибка ввода старшего коэффициента!\n";
+                continue;
+            }
+
+            size_t degree;
+            ss >> degree;
+            if (ss.fail()) {
+                cout << "Ошибка ввода степени!\n";
+                continue;
+            }
+
+            ComplexPolinomData data;
+            data.an = an;
+            data.degree = degree;
+
+            bool ok = true;
+            for (size_t i = 0; i < degree; ++i) {
+                TComplex root;
+                ss >> root;
+                if (ss.fail()) {
+                    cout << "Ошибка ввода корня " << i << "!\n";
+                    ok = false;
+                    break;
+                }
+                data.roots.push_back(root);
+            }
+
+            if (ok) {
+                emit complexPolinomDataReady(data);
+            }
+        }
+        else {
+            emit commandEntered(choice);
+        }
+
+        if (choice == 0) {
+            emit finished();
             break;
-        default:
-            cout << "Неверная команда! Пожалуйста, выберите 0-8.\n";
         }
     }
+}
+
+// ==================== ServerApplication ====================
+
+ServerApplication::ServerApplication(QObject* parent)
+    : ConsoleApplication(parent), communicator(nullptr),
+    serverThread(nullptr), menuThread(nullptr), menuWorker(nullptr)
+{
+
+    communicator = new Communicator(nullptr);
+
+    // Подключаем сигналы коммуникатора
+    connect(communicator, &Communicator::polinomRequested,
+            this, &ServerApplication::onPolinomRequested, Qt::QueuedConnection);
+    connect(communicator, &Communicator::clientConnected,
+            this, &ServerApplication::onClientConnected, Qt::QueuedConnection);
+    connect(communicator, &Communicator::clientDisconnected,
+            this, &ServerApplication::onClientDisconnected, Qt::QueuedConnection);
+    connect(communicator, &Communicator::dataTypeReceived,
+            this, &ServerApplication::onDataTypeReceived, Qt::QueuedConnection);
+    connect(communicator, &Communicator::errorOccurred,
+            this, &ServerApplication::onError, Qt::QueuedConnection);
+
+    const QMetaObject* meta = metaObject();
+    int index = meta->indexOfSlot("onPolinomRequested()");
+    if (index >= 0) {
+        cout << "[ServerApplication]   Слот onPolinomRequested найден, индекс: " << index << endl;
+    }
+}
+
+ServerApplication::~ServerApplication()
+{
+    stopServer();
+
+    if (menuThread) {
+        menuThread->quit();
+        menuThread->wait();
+        delete menuThread;
+    }
+}
+
+bool ServerApplication::startServer(quint16 port)
+{
+    // Создаем поток для коммуникатора
+    serverThread = new QThread(this);
+
+    // Перемещаем коммуникатор в поток
+    communicator->moveToThread(serverThread);
+
+    // Запускаем сервер в потоке
+    connect(serverThread, &QThread::started, [=]() {
+        communicator->start(port);
+    });
+
+    // Очистка при завершении потока
+    connect(serverThread, &QThread::finished, [=]() {
+        communicator->deleteLater();
+    });
+
+    serverThread->start();
+    return true;
+}
+
+void ServerApplication::stopServer()
+{
+
+    if (serverThread && serverThread->isRunning()) {
+        // Останавливаем коммуникатор
+        if (communicator) {
+            QMetaObject::invokeMethod(communicator, "stop", Qt::QueuedConnection);
+        }
+        serverThread->quit();
+
+        // Ждем завершения потока
+        if (!serverThread->wait(3000)) {
+            serverThread->terminate();
+            serverThread->wait();
+        }
+
+        delete serverThread;
+        serverThread = nullptr;
+    }
+}
+
+void ServerApplication::onClientConnected(const QHostAddress& address, quint16 port)
+{
+}
+
+void ServerApplication::onClientDisconnected()
+{
+
+}
+
+void ServerApplication::onDataTypeReceived(int type)
+{
+}
+
+void ServerApplication::onError(const QString& error)
+{
+}
+
+void ServerApplication::onPolinomRequested()
+{
+
+    if (!polinomExists) {
+        if (currentType == 1) {
+            Polinom<double> empty;
+            communicator->sendPolinomToClient(empty, false);
+        } else {
+            Polinom<TComplex> empty;
+            communicator->sendPolinomToClient(empty, false);
+        }
+        return;
+    }
+
+    // Отправляем полином соответствующего типа
+    if (currentType == 1 && realPolinom) {
+        const Array<double>& roots = realPolinom->getRoots();
+        for (size_t i = 0; i < roots.getSize(); ++i) {
+            cout << roots[i] << " ";
+        }
+        cout << endl;
+
+        if (communicator) {
+            communicator->sendPolinomToClient(*realPolinom, true);
+        } else {
+        }
+    } else if (currentType == 2 && complexPolinom) {
+        const Array<TComplex>& roots = complexPolinom->getRoots();
+        for (size_t i = 0; i < roots.getSize(); ++i) {
+            cout << roots[i] << " ";
+        }
+        cout << endl;
+
+        if (communicator) {
+            communicator->sendPolinomToClient(*complexPolinom, true);
+        } else {
+            cout << "[ServerApplication]   → ОШИБКА: communicator = nullptr" << endl;
+        }
+    } else {
+        cout << "[ServerApplication]   → Ошибка: несоответствие типа" << endl;
+    }
+}
+
+void ServerApplication::onCommandEntered(int cmd)
+{
+
+    switch (cmd) {
+    case 1: handleInput(); break;
+    case 2: handleChangeCoeffOrRoot(); break;
+    case 3: handleEvaluate(); break;
+    case 4: handleResize(); break;
+    case 5: handleDisplayForm1(); break;
+    case 6: handleDisplayForm2(); break;
+    case 7: handlePrintRoots(); break;
+    case 8: handlePrintCoeffs(); break;
+    case 9: selectDataType(); break;
+    case 0:
+        cout << "Завершение работы...\n";
+        running = false;
+        stopServer();
+        QCoreApplication::quit();
+        break;
+    default:
+        cout << "Неверная команда!\n";
+    }
+}
+
+void ServerApplication::onDoublePolinomDataReceived(const DoublePolinomData& data)
+{
+    for (double r : data.roots) {
+        cout << r << " ";
+    }
+    cout << endl;
+
+    Array<double> roots;
+    for (double r : data.roots) {
+        roots.pushBack(r);
+    }
+
+    if (realPolinom) delete realPolinom;
+    realPolinom = new Polinom<double>(data.an, roots);
+    polinomExists = true;
+}
+
+void ServerApplication::onComplexPolinomDataReceived(const ComplexPolinomData& data)
+{
+    Array<TComplex> roots;
+    for (const TComplex& r : data.roots) {
+        roots.pushBack(r);
+    }
+
+    if (complexPolinom) delete complexPolinom;
+    complexPolinom = new Polinom<TComplex>(data.an, roots);
+    polinomExists = true;
+}
+
+// ==================== Переопределенные методы ====================
+
+void ServerApplication::handleInput()
+{
+    ConsoleApplication::handleInput();
+
+    // Уведомляем коммуникатор о новом типе данных
+    if (communicator && communicator->isClientConnected()) {
+        communicator->setDataType(currentType);
+    }
+}
+
+void ServerApplication::handleChangeCoeffOrRoot()
+{
+    ConsoleApplication::handleChangeCoeffOrRoot();
+
+    // Уведомляем о изменении полинома
+    if (polinomExists && communicator && communicator->isClientConnected()) {
+        if (currentType == 1) {
+            communicator->sendPolinomToClient(*realPolinom, true);
+        } else {
+            communicator->sendPolinomToClient(*complexPolinom, true);
+        }
+    }
+}
+
+void ServerApplication::handleResize()
+{
+    ConsoleApplication::handleResize();
+
+    // Уведомляем о изменении полинома
+    if (polinomExists && communicator && communicator->isClientConnected()) {
+        if (currentType == 1) {
+            communicator->sendPolinomToClient(*realPolinom, true);
+        } else {
+            communicator->sendPolinomToClient(*complexPolinom, true);
+        }
+    }
+}
+
+void ServerApplication::handleEvaluate()
+{
+    ConsoleApplication::handleEvaluate();
+}
+
+void ServerApplication::handleDisplayForm1()
+{
+    ConsoleApplication::handleDisplayForm1();
+}
+
+void ServerApplication::handleDisplayForm2()
+{
+    ConsoleApplication::handleDisplayForm2();
+}
+
+void ServerApplication::handlePrintRoots()
+{
+    ConsoleApplication::handlePrintRoots();
+}
+
+void ServerApplication::handlePrintCoeffs()
+{
+    ConsoleApplication::handlePrintCoeffs();
+}
+
+void ServerApplication::run()
+{
+    // Запускаем сервер
+    startServer(12345);
+
+    // Создаем поток для меню
+    menuThread = new QThread(this);
+    menuWorker = new MenuWorker();
+    menuWorker->moveToThread(menuThread);
+
+    // Подключаем сигналы от menuWorker
+    connect(menuThread, &QThread::started, menuWorker, &MenuWorker::run);
+    connect(menuWorker, &MenuWorker::commandEntered,
+            this, &ServerApplication::onCommandEntered, Qt::QueuedConnection);
+    connect(menuWorker, &MenuWorker::doublePolinomDataReady,
+            this, &ServerApplication::onDoublePolinomDataReceived, Qt::QueuedConnection);
+    connect(menuWorker, &MenuWorker::complexPolinomDataReady,
+            this, &ServerApplication::onComplexPolinomDataReceived, Qt::QueuedConnection);
+    connect(menuWorker, &MenuWorker::finished, menuThread, &QThread::quit);
+    connect(menuThread, &QThread::finished, menuWorker, &QObject::deleteLater);
+
+    // Запускаем выбор типа данных в главном потоке
+    selectDataType();
+
+    // Запускаем поток меню
+    menuThread->start();
 }

@@ -6,36 +6,31 @@
 #include "application.h"
 #include "communicator.h"
 
-// Класс для работы сервера в отдельном потоке
-class ServerWorker : public QObject
+// Структуры для передачи данных между потоками
+struct DoublePolinomData {
+    double an;
+    size_t degree;
+    QVector<double> roots;
+};
+
+struct ComplexPolinomData {
+    TComplex an;
+    size_t degree;
+    QVector<TComplex> roots;
+};
+
+class MenuWorker : public QObject
 {
     Q_OBJECT
 
-private:
-    Communicator* communicator;
-    Polinom polinom;
-    bool polinomExists;
-
-public:
-    explicit ServerWorker(QObject* parent = nullptr);
-    ~ServerWorker();
-
 public slots:
-    void startServer(quint16 port);
-    void stopServer();
-    void updatePolinom(const Polinom& newPolinom, bool exists);
-
-    // Слоты для обработки сигналов от коммуникатора
-    void onPolinomRequested();
-    void onClientConnected(const QHostAddress& address, quint16 port);
-    void onClientDisconnected();
+    void run();
 
 signals:
-    void serverStarted(quint16 port);
-    void serverError(const QString& error);
-    void clientConnected(const QHostAddress& address, quint16 port);
-    void clientDisconnected();
-    void logMessage(const QString& message);
+    void commandEntered(int cmd);
+    void doublePolinomDataReady(const DoublePolinomData& data);
+    void complexPolinomDataReady(const ComplexPolinomData& data);
+    void finished();
 };
 
 class ServerApplication : public ConsoleApplication
@@ -43,22 +38,38 @@ class ServerApplication : public ConsoleApplication
     Q_OBJECT
 
 private:
+    Communicator* communicator;
     QThread* serverThread;
-    ServerWorker* serverWorker;
+    QThread* menuThread;
+    MenuWorker* menuWorker;
+
+    void stopServer();
 
 private slots:
-    void onServerStarted(quint16 port);
-    void onServerError(const QString& error);
+    void onPolinomRequested();
     void onClientConnected(const QHostAddress& address, quint16 port);
     void onClientDisconnected();
-    void onLogMessage(const QString& message);
+    void onDataTypeReceived(int type);
+    void onError(const QString& error);
+    void onCommandEntered(int cmd);
+    void onDoublePolinomDataReceived(const DoublePolinomData& data);
+    void onComplexPolinomDataReceived(const ComplexPolinomData& data);
 
 public:
     explicit ServerApplication(QObject* parent = nullptr);
     ~ServerApplication();
 
-    bool start(quint16 port);
+    bool startServer(quint16 port);
     void run() override;
+
+    void handleInput() override;
+    void handleChangeCoeffOrRoot() override;
+    void handleEvaluate() override;
+    void handleResize() override;
+    void handleDisplayForm1() override;
+    void handleDisplayForm2() override;
+    void handlePrintRoots() override;
+    void handlePrintCoeffs() override;
 };
 
 #endif // SERVERAPPLICATION_H

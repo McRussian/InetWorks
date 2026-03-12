@@ -6,32 +6,29 @@ TARGET = client
 
 # Подключаем общую библиотеку
 INCLUDEPATH += ../common
-LIBS += -L../common -lcommon
 
-# Для отладочной сборки
+# В зависимости от конфигурации подключаем нужную библиотеку
 CONFIG(debug, debug|release) {
+    # Отладочная сборка
     LIBS += -L../common -lcommond
+    PRE_TARGETDEPS += ../common/libcommond.a
+    message("Using debug library: libcommond.a")
 } else {
+    # Релизная сборка
     LIBS += -L../common -lcommon
+    PRE_TARGETDEPS += ../common/libcommon.a
+    message("Using release library: libcommon.a")
 }
 
-# Исходные файлы клиента
+# Исходные файлы клиента - ТОЛЬКО свои файлы
 HEADERS += \
-    clientcommunicator.h \
-    clientapplication.h
+    clientapplication.h \
+    clientcommunicator.h
 
 SOURCES += \
-    clientcommunicator.cpp \
     clientapplication.cpp \
+    clientcommunicator.cpp \
     main_client.cpp
 
 # Qt модули
-QT += core network widgets
-
-# Зависимость от сборки общей библиотеки
-PRE_TARGETDEPS += ../common/libcommon.a
-
-# Для отладочной сборки
-CONFIG(debug, debug|release) {
-    PRE_TARGETDEPS += ../common/libcommond.a
-}
+QT += core widgets network

@@ -1,74 +1,99 @@
 #include "clientcommunicator.h"
 #include <iostream>
 #include <sstream>
-#include <QTimer>
-#include <QDebug>
+#include <QHostInfo>
 
 using namespace std;
 
 ClientCommunicator::ClientCommunicator(QObject* parent)
-    : QObject(parent), udpSocket(nullptr), serverPort(0), isConnected(false)
+    : QObject(parent), udpSocket(nullptr), serverPort(0), isConnected(false), currentType(1)
 {
+    cout << "[ClientCommunicator] Создан" << endl;
+
     udpSocket = new QUdpSocket(this);
+    timeoutTimer = new QTimer(this);
+    timeoutTimer->setSingleShot(true);
+
     connect(udpSocket, &QUdpSocket::readyRead, this, &ClientCommunicator::onReadyRead);
+    connect(timeoutTimer, &QTimer::timeout, this, &ClientCommunicator::onTimeout);
 }
 
 ClientCommunicator::~ClientCommunicator()
 {
+    cout << "[ClientCommunicator] Уничтожен" << endl;
     disconnectFromServer();
 }
 
-bool ClientCommunicator::connectToServer(const QHostAddress& address, quint16 port)
+bool ClientCommunicator::connectToServer(const QHostAddress& address, quint16 port, int type)
 {
-    // Убеждаемся, что используем IPv4 адрес
-    QHostAddress ipv4Address;
+    cout << "\n[ClientCommunicator] connectToServer()" << endl;
+
+    // Нормализуем адрес (IPv4)
+    QHostAddress normalizedAddress;
     if (address.protocol() == QAbstractSocket::IPv6Protocol) {
         QString addrStr = address.toString();
         if (addrStr.startsWith("::ffff:")) {
             QString ipv4Str = addrStr.mid(7);
-            ipv4Address = QHostAddress(ipv4Str);
+            normalizedAddress = QHostAddress(ipv4Str);
         } else {
-            ipv4Address = address;
+            normalizedAddress = address;
         }
     } else {
-        ipv4Address = address;
+        normalizedAddress = address;
     }
 
-    serverAddress = ipv4Address;
+    serverAddress = normalizedAddress;
     serverPort = port;
+    currentType = type;
 
-    cout << "Подключение к серверу "
-         << serverAddress.toString().toStdString() << ":" << port << endl;
+    cout << "[ClientCommunicator] Подключение к серверу "
+         << serverAddress.toString().toStdString() << ":" << port
+         << " (тип: " << (type == 1 ? "double" : "complex") << ")" << endl;
 
-    QByteArray helloMsg = "HELLO";
-    qint64 sent = udpSocket->writeDatagram(helloMsg, serverAddress, serverPort);
+    // Отправляем тип данных
+    QString typeMsg = (type == 1) ? "TYPE:DOUBLE" : "TYPE:COMPLEX";
+    cout << "[ClientCommunicator] Отправка: " << typeMsg.toStdString() << endl;
+
+    qint64 sent = udpSocket->writeDatagram(typeMsg.toUtf8(), serverAddress, serverPort);
 
     if (sent == -1) {
-        cout << "Ошибка отправки HELLO: "
+        cout << "[ClientCommunicator] Ошибка отправки TYPE: "
              << udpSocket->errorString().toStdString() << endl;
         return false;
     }
 
-    cout << "HELLO отправлен, ожидание ответа..." << endl;
+    // Отправляем HELLO
+    QByteArray helloMsg = "HELLO";
+    cout << "[ClientCommunicator] Отправка: HELLO" << endl;
 
-    QTimer::singleShot(3000, this, [this]() {
-        if (!isConnected) {
-            cout << "Таймаут подключения" << endl;
-            emit connectionTimeout();
-        }
-    });
+    sent = udpSocket->writeDatagram(helloMsg, serverAddress, serverPort);
+
+    if (sent == -1) {
+        cout << "[ClientCommunicator] Ошибка отправки HELLO: "
+             << udpSocket->errorString().toStdString() << endl;
+        return false;
+    }
+
+    cout << "[ClientCommunicator] HELLO отправлен, ожидание ответа..." << endl;
+
+    // Таймаут 3 секунды
+    timeoutTimer->start(3000);
 
     return true;
 }
 
 void ClientCommunicator::disconnectFromServer()
 {
+    cout << "\n[ClientCommunicator] disconnectFromServer()" << endl;
+
     if (isConnected) {
         QByteArray byeMsg = "BYE";
+        cout << "[ClientCommunicator] Отправка: BYE" << endl;
         udpSocket->writeDatagram(byeMsg, serverAddress, serverPort);
         isConnected = false;
         emit disconnected();
     }
+    timeoutTimer->stop();
 }
 
 bool ClientCommunicator::isConnectedToServer() const
@@ -78,11 +103,137 @@ bool ClientCommunicator::isConnectedToServer() const
 
 void ClientCommunicator::requestPolinom()
 {
-    if (!isConnected) return;
+    cout << "\n[ClientCommunicator] requestPolinom()" << endl;
+
+    if (!isConnected) {
+        cout << "[ClientCommunicator] Ошибка: нет подключения к серверу" << endl;
+        emit errorOccurred("Нет подключения к серверу");
+        return;
+    }
 
     QByteArray request = "GET_POLINOM";
-    udpSocket->writeDatagram(request, serverAddress, serverPort);
-    cout << "Запрос полинома отправлен" << endl;
+    cout << "[ClientCommunicator] Отправка: GET_POLINOM" << endl;
+
+    qint64 sent = udpSocket->writeDatagram(request, serverAddress, serverPort);
+
+    if (sent != -1) {
+        cout << "[ClientCommunicator] Запрос полинома отправлен" << endl;
+    } else {
+        cout << "[ClientCommunicator] Ошибка отправки запроса: "
+             << udpSocket->errorString().toStdString() << endl;
+        emit errorOccurred(udpSocket->errorString());
+    }
+}
+
+void ClientCommunicator::onTimeout()
+{
+    cout << "\n[ClientCommunicator] Таймаут подключения" << endl;
+
+    if (!isConnected) {
+        emit connectionTimeout();
+    }
+}
+
+Polinom<double> ClientCommunicator::parsePolinomDouble(const QString& response)
+{
+    cout << "[ClientCommunicator] parsePolinomDouble()" << endl;
+
+    int degree = 0;
+    double leading = 0.0;
+    Array<double> roots;
+
+    QStringList parts = response.split(';');
+    cout << "[ClientCommunicator]   Частей: " << parts.size() << endl;
+
+    for (const QString& part : parts) {
+        if (part.startsWith("DEGREE:")) {
+            degree = part.mid(7).toInt();
+            cout << "[ClientCommunicator]   Степень: " << degree << endl;
+        }
+        else if (part.startsWith("LEADING:")) {
+            std::string str = part.mid(8).toStdString();
+            std::istringstream iss(str);
+            iss >> leading;
+            cout << "[ClientCommunicator]   Старший коэффициент: " << leading << endl;
+        }
+        else if (part.startsWith("ROOTS:")) {
+            QString rootsStr = part.mid(6);
+            cout << "[ClientCommunicator]   Строка корней: " << rootsStr.toStdString() << endl;
+
+            if (!rootsStr.isEmpty() && degree > 0) {
+                QStringList rootList = rootsStr.split(',');
+                cout << "[ClientCommunicator]   Количество корней в списке: " << rootList.size() << endl;
+
+                if (rootList.size() == degree) {
+                    for (const QString& rootStr : rootList) {
+                        std::string str = rootStr.toStdString();
+                        std::istringstream iss(str);
+                        double r;
+                        iss >> r;
+                        roots.pushBack(r);
+                        cout << "[ClientCommunicator]     Корень: " << r << endl;
+                    }
+                } else {
+                    cout << "[ClientCommunicator]   Ошибка: количество корней (" << rootList.size()
+                         << ") != степени (" << degree << ")" << endl;
+                }
+            }
+        }
+    }
+
+    cout << "[ClientCommunicator]   Создание полинома с " << roots.getSize() << " корнями" << endl;
+    return Polinom<double>(leading, roots);
+}
+
+Polinom<TComplex> ClientCommunicator::parsePolinomComplex(const QString& response)
+{
+    cout << "[ClientCommunicator] parsePolinomComplex()" << endl;
+
+    int degree = 0;
+    TComplex leading;
+    Array<TComplex> roots;
+
+    QStringList parts = response.split(';');
+    cout << "[ClientCommunicator]   Частей: " << parts.size() << endl;
+
+    for (const QString& part : parts) {
+        if (part.startsWith("DEGREE:")) {
+            degree = part.mid(7).toInt();
+            cout << "[ClientCommunicator]   Степень: " << degree << endl;
+        }
+        else if (part.startsWith("LEADING:")) {
+            std::string str = part.mid(8).toStdString();
+            std::istringstream iss(str);
+            iss >> leading;
+            cout << "[ClientCommunicator]   Старший коэффициент: " << leading << endl;
+        }
+        else if (part.startsWith("ROOTS:")) {
+            QString rootsStr = part.mid(6);
+            cout << "[ClientCommunicator]   Строка корней: " << rootsStr.toStdString() << endl;
+
+            if (!rootsStr.isEmpty() && degree > 0) {
+                QStringList rootList = rootsStr.split(',');
+                cout << "[ClientCommunicator]   Количество корней в списке: " << rootList.size() << endl;
+
+                if (rootList.size() == degree) {
+                    for (const QString& rootStr : rootList) {
+                        std::string str = rootStr.toStdString();
+                        std::istringstream iss(str);
+                        TComplex r;
+                        iss >> r;
+                        roots.pushBack(r);
+                        cout << "[ClientCommunicator]     Корень: " << r << endl;
+                    }
+                } else {
+                    cout << "[ClientCommunicator]   Ошибка: количество корней (" << rootList.size()
+                         << ") != степени (" << degree << ")" << endl;
+                }
+            }
+        }
+    }
+
+    cout << "[ClientCommunicator]   Создание полинома с " << roots.getSize() << " корнями" << endl;
+    return Polinom<TComplex>(leading, roots);
 }
 
 void ClientCommunicator::onReadyRead()
@@ -97,7 +248,7 @@ void ClientCommunicator::onReadyRead()
         udpSocket->readDatagram(datagram.data(), datagram.size(),
                                 &senderAddress, &senderPort);
 
-        // Конвертируем в IPv4
+        // Нормализуем адрес отправителя
         if (senderAddress.protocol() == QAbstractSocket::IPv6Protocol) {
             QString addrStr = senderAddress.toString();
             if (addrStr.startsWith("::ffff:")) {
@@ -106,85 +257,48 @@ void ClientCommunicator::onReadyRead()
             }
         }
 
-        // Проверяем, что ответ от нашего сервера
+        // Проверяем, что ответ от ожидаемого сервера
         if (senderAddress != serverAddress || senderPort != serverPort) {
+            cout << "[ClientCommunicator] Получен ответ от другого сервера: "
+                 << senderAddress.toString().toStdString() << ":" << senderPort << endl;
             continue;
         }
 
         QString response = QString::fromUtf8(datagram).trimmed();
-        cout << "Получен ответ: " << response.toStdString() << endl;
+
+        cout << "\n[ClientCommunicator] Получен ответ от сервера:" << endl;
+        cout << "[ClientCommunicator]   " << response.left(100).toStdString();
+        if (response.length() > 100) cout << "...";
+        cout << endl;
+
+        // Останавливаем таймаут
+        timeoutTimer->stop();
 
         if (response == "HELLO_ACK") {
-            cout << "✓ Подключение установлено" << endl;
+            cout << "[ClientCommunicator] ✓ Подключение к серверу установлено" << endl;
             isConnected = true;
             emit connected();
         }
         else if (response.startsWith("ERROR:")) {
-            emit errorOccurred(response.mid(6));
+            QString errorMsg = response.mid(6);
+            cout << "[ClientCommunicator] ✗ Ошибка сервера: " << errorMsg.toStdString() << endl;
+            emit errorOccurred(errorMsg);
         }
         else if (response.startsWith("DEGREE:")) {
             try {
-                // УПРОЩЕННЫЙ ПАРСИНГ
-                QStringList parts = response.split(';');
-
-                // 1. Парсим степень
-                int degree = 0;
-                for (const QString& part : parts) {
-                    if (part.startsWith("DEGREE:")) {
-                        degree = part.mid(7).toInt();
-                        cout << "Степень: " << degree << endl;
-                        break;
-                    }
+                if (currentType == 1) {
+                    Polinom<double> p = parsePolinomDouble(response);
+                    cout << "[ClientCommunicator] ✓ Получен полином (double) степени " << p.getDegree() << endl;
+                    emit polinomReceived(p);
+                } else {
+                    Polinom<TComplex> p = parsePolinomComplex(response);
+                    cout << "[ClientCommunicator] ✓ Получен полином (complex) степени " << p.getDegree() << endl;
+                    emit polinomReceived(p);
                 }
-
-                // 2. Парсим старший коэффициент
-                number leading;
-                for (const QString& part : parts) {
-                    if (part.startsWith("LEADING:")) {
-                        string str = part.mid(8).toStdString();
-                        istringstream iss(str);
-                        iss >> leading;
-                        cout << "Старший коэффициент: " << leading << endl;
-                        break;
-                    }
-                }
-
-                // 3. Парсим корни
-                Array roots;
-                for (const QString& part : parts) {
-                    if (part.startsWith("ROOTS:")) {
-                        QString rootsStr = part.mid(6);
-                        cout << "Строка корней: " << rootsStr.toStdString() << endl;
-
-                        if (!rootsStr.isEmpty() && degree > 0) {
-                            QStringList rootList = rootsStr.split(',');
-                            cout << "Количество корней: " << rootList.size() << endl;
-
-                            if (rootList.size() == degree) {
-                                roots = Array(degree);
-                                for (int i = 0; i < rootList.size(); ++i) {
-                                    string str = rootList[i].toStdString();
-                                    istringstream iss(str);
-                                    number r;
-                                    iss >> r;
-                                    roots.pushBack(r);
-                                    cout << "Корень " << i << ": " << r << endl;
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-
-                // 4. Создаем полином
-                cout << "Создание полинома... Roots size: " << roots.getSize() << endl;
-                Polinom polinom(leading, roots);
-                cout << "✓ Полином создан" << endl;
-                emit polinomReceived(polinom);
-
             } catch (const std::exception& e) {
-                cout << "✗ Ошибка: " << e.what() << endl;
-                emit errorOccurred(e.what());
+                string error = "Ошибка парсинга: " + string(e.what());
+                cout << "[ClientCommunicator] ✗ " << error << endl;
+                emit errorOccurred(QString::fromStdString(error));
             }
         }
     }

@@ -1,26 +1,22 @@
 #include <QCoreApplication>
+#include <QTimer>
 #include "serverapplication.h"
 #include <iostream>
+
+using namespace std;
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
 
-    quint16 port = 12345; // Порт по умолчанию
+    cout << "=== Запуск серверного приложения ===" << endl;
 
-    if (argc > 1) {
-        port = QString(argv[1]).toUShort();
-    }
+    ServerApplication server;
 
-    ServerApplication serverApp;
-
-    if (!serverApp.start(port)) {
-        std::cerr << "Не удалось запустить серверное приложение" << std::endl;
-        return 1;
-    }
-
-    // Запускаем меню в основном потоке
-    serverApp.run();
+    // Запускаем серверное приложение через таймер, чтобы event loop успел запуститься
+    QTimer::singleShot(0, &server, [&server]() {
+        server.run();
+    });
 
     return app.exec();
 }

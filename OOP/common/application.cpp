@@ -1,86 +1,233 @@
 #include "application.h"
 #include <iostream>
 #include <limits>
+#include <sstream>
 
 using namespace std;
 
-// Конструктор с инициализацией QObject
 ConsoleApplication::ConsoleApplication(QObject* parent)
-    : QObject(parent), polinom(), polinomExists(false), running(true)
+    : QObject(parent), realPolinom(nullptr), complexPolinom(nullptr),
+    currentType(0), polinomExists(false), running(true)
 {
 }
 
 ConsoleApplication::~ConsoleApplication()
 {
-    // Виртуальный деструктор
+    if (realPolinom) delete realPolinom;
+    if (complexPolinom) delete complexPolinom;
 }
 
-// Показать меню
-void ConsoleApplication::showMenu() {
+void ConsoleApplication::selectDataType()
+{
+    cout << "\n=== Выбор типа данных ===\n";
+    cout << "1. Вещественные числа (double)\n";
+    cout << "2. Комплексные числа (TComplex)\n";
+    cout << "Выберите тип (1-2): ";
+
+    int type;
+    cin >> type;
+
+    if (cin.fail()) {
+        cout << "Ошибка ввода! Используется double по умолчанию.\n";
+        cin.clear();
+        cin.ignore(10000, '\n');
+        type = 1;
+    }
+
+    if (type == 1) {
+        currentType = 1;
+        if (realPolinom) delete realPolinom;
+        if (complexPolinom) {
+            delete complexPolinom;
+            complexPolinom = nullptr;
+        }
+        realPolinom = new Polinom<double>();
+        cout << "✓ Выбран тип: double\n";
+    } else if (type == 2) {
+        currentType = 2;
+        if (complexPolinom) delete complexPolinom;
+        if (realPolinom) {
+            delete realPolinom;
+            realPolinom = nullptr;
+        }
+        complexPolinom = new Polinom<TComplex>();
+        cout << "✓ Выбран тип: TComplex\n";
+    } else {
+        cout << "Неверный выбор. Используется double по умолчанию.\n";
+        currentType = 1;
+        if (!realPolinom) realPolinom = new Polinom<double>();
+    }
+
+    polinomExists = false;
+}
+
+void ConsoleApplication::showMenu()
+{
     cout << "\n========== МЕНЮ ПРИЛОЖЕНИЯ ==========\n";
     cout << "1. Ввести новый полином\n";
     cout << "2. Изменить старший коэффициент или корень\n";
     cout << "3. Вычислить значение полинома в точке\n";
     cout << "4. Изменить степень полинома\n";
-    cout << "5. Вывести полином (форма 1: an*x^n + ... + a0)\n";
-    cout << "6. Вывести полином (форма 2: an*(x - r1)*...*(x - rn))\n";
+    cout << "5. Вывести полином (форма 1)\n";
+    cout << "6. Вывести полином (форма 2)\n";
     cout << "7. Вывести корни полинома\n";
     cout << "8. Вывести коэффициенты полинома\n";
+    cout << "9. Сменить тип данных\n";
     cout << "0. Выход\n";
     cout << "=====================================\n";
-    cout << "Выберите команду: ";
 }
 
-// Ввод нового полинома
-void ConsoleApplication::handleInput() {
-    cout << "=== Ввод нового полинома ===\n";
-    cout << "Формат: an n r1 r2 ... rn\n";
-    cout << "где n - степень полинома (количество корней)\n";
-    cout << "Пример: 1 3 1+2i 3-4i 5i\n";
-    cout << "(an=1, степень 3, корни: 1+2i, 3-4i, 5i)\n";
+// ==================== Обертки ====================
+
+void ConsoleApplication::handleInput()
+{
+    if (currentType == 1)
+        handleInputDouble();
+    else if (currentType == 2)
+        handleInputComplex();
+    else {
+        cout << "Тип данных не выбран. Сначала выберите тип (команда 9).\n";
+    }
+}
+
+void ConsoleApplication::handleChangeCoeffOrRoot()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан. Сначала введите полином.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handleChangeCoeffOrRootDouble();
+    else if (currentType == 2)
+        handleChangeCoeffOrRootComplex();
+}
+
+void ConsoleApplication::handleEvaluate()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handleEvaluateDouble();
+    else if (currentType == 2)
+        handleEvaluateComplex();
+}
+
+void ConsoleApplication::handleResize()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handleResizeDouble();
+    else if (currentType == 2)
+        handleResizeComplex();
+}
+
+void ConsoleApplication::handleDisplayForm1()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handleDisplayForm1Double();
+    else if (currentType == 2)
+        handleDisplayForm1Complex();
+}
+
+void ConsoleApplication::handleDisplayForm2()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handleDisplayForm2Double();
+    else if (currentType == 2)
+        handleDisplayForm2Complex();
+}
+
+void ConsoleApplication::handlePrintRoots()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handlePrintRootsDouble();
+    else if (currentType == 2)
+        handlePrintRootsComplex();
+}
+
+void ConsoleApplication::handlePrintCoeffs()
+{
+    if (!polinomExists) {
+        cout << "Полином не создан.\n";
+        return;
+    }
+
+    if (currentType == 1)
+        handlePrintCoeffsDouble();
+    else if (currentType == 2)
+        handlePrintCoeffsComplex();
+}
+
+// ==================== Реализация для double (базовая) ====================
+
+void ConsoleApplication::handleInputDouble()
+{
+    cout << "\n=== Ввод нового полинома (double) ===\n";
+    cout << "Формат: an degree r1 r2 ... rn\n";
+    cout << "Пример: 2 3 1 2 3\n";
     cout << "Ваш ввод: ";
 
-    // Очищаем поток ввода
-    cin.clear();
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    double an;
+    size_t degree;
 
-    // Используем оператор >> для Polinom
-    cin >> polinom;
+    cin >> an >> degree;
 
     if (cin.fail()) {
         cout << "Ошибка ввода! Полином не создан.\n";
         cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.ignore(10000, '\n');
         polinomExists = false;
-    } else {
-        cout << "Полином успешно создан.\n";
-        cout << "Степень: " << polinom.getDegree() << endl;
-        cout << "Старший коэффициент: " << polinom.getLeadingCoeff() << endl;
-        cout << "Корни: ";
-        const Array& roots = polinom.getRoots();
-        for (size_t i = 0; i < roots.getSize(); ++i) {
-            cout << roots[i] << " ";
-        }
-        cout << endl;
-        polinomExists = true;
+        return;
     }
+
+    Array<double> roots;
+    for (size_t i = 0; i < degree; ++i) {
+        double root;
+        cin >> root;
+        if (cin.fail()) {
+            cout << "Ошибка ввода корня " << i << "!\n";
+            cin.clear();
+            cin.ignore(10000, '\n');
+            polinomExists = false;
+            return;
+        }
+        roots.pushBack(root);
+    }
+
+    if (realPolinom) delete realPolinom;
+    realPolinom = new Polinom<double>(an, roots);
+    polinomExists = true;
+    cout << "✓ Полином (double) успешно создан.\n";
 }
 
-// Изменение старшего коэффициента или корня
-void ConsoleApplication::handleChangeCoeffOrRoot() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    if (polinom.getDegree() == 0 && polinom.getLeadingCoeff() == number(0.0)) {
-        cout << "Полином нулевой. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    cout << "=== Изменение параметров полинома ===\n";
+void ConsoleApplication::handleChangeCoeffOrRootDouble()
+{
+    cout << "\n--- Изменение параметров полинома (double) ---\n";
     cout << "Текущий полином: ";
-    polinom.printForm2(cout);
+    realPolinom->printForm2(cout);
     cout << endl;
 
     cout << "Что изменить?\n";
@@ -88,43 +235,25 @@ void ConsoleApplication::handleChangeCoeffOrRoot() {
     cout << "2. Корень по индексу\n";
     cout << "Ваш выбор: ";
 
-    int choice;
-    cin >> choice;
+    int subChoice;
+    cin >> subChoice;
 
-    if (cin.fail()) {
-        cout << "Ошибка ввода!\n";
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        return;
-    }
-
-    switch (choice) {
-    case 1: {
-        cout << "Текущий старший коэффициент: " << polinom.getLeadingCoeff() << endl;
+    if (subChoice == 1) {
+        cout << "Текущий an = " << realPolinom->getLeadingCoeff() << endl;
         cout << "Введите новое значение an: ";
-        number an;
+        double an;
         cin >> an;
-
-        if (cin.fail()) {
-            cout << "Ошибка ввода!\n";
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return;
-        }
-
-        polinom.setLeadingCoeff(an);
-        cout << "Старший коэффициент изменен.\n";
-        break;
-    }
-    case 2: {
-        size_t degree = polinom.getDegree();
+        realPolinom->setLeadingCoeff(an);
+        cout << "✓ Старший коэффициент изменен.\n";
+    } else if (subChoice == 2) {
+        size_t degree = realPolinom->getDegree();
         if (degree == 0) {
             cout << "Полином нулевой степени, корней нет.\n";
             return;
         }
 
         cout << "Текущие корни:\n";
-        const Array& roots = polinom.getRoots();
+        const Array<double>& roots = realPolinom->getRoots();
         for (size_t i = 0; i < roots.getSize(); ++i) {
             cout << "  r" << i << " = " << roots[i] << endl;
         }
@@ -133,176 +262,278 @@ void ConsoleApplication::handleChangeCoeffOrRoot() {
         size_t index;
         cin >> index;
 
-        if (cin.fail() || index >= degree) {
+        if (index < degree) {
+            cout << "Текущее значение r" << index << " = " << realPolinom->getRoot(index) << endl;
+            cout << "Введите новое значение: ";
+            double value;
+            cin >> value;
+            realPolinom->setRoot(index, value);
+            cout << "✓ Корень изменен.\n";
+        } else {
             cout << "Неверный индекс!\n";
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return;
         }
-
-        cout << "Текущее значение r" << index << " = " << polinom.getRoot(index) << endl;
-        cout << "Введите новое значение: ";
-        number value;
-        cin >> value;
-
-        if (cin.fail()) {
-            cout << "Ошибка ввода!\n";
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return;
-        }
-
-        polinom.setRoot(index, value);
-        cout << "Корень изменен.\n";
-        break;
-    }
-    default:
-        cout << "Неверный выбор!\n";
     }
 }
 
-// Вычисление значения полинома в точке
-void ConsoleApplication::handleEvaluate() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    if (polinom.getDegree() == 0 && polinom.getLeadingCoeff() == number(0.0)) {
-        cout << "Полином нулевой. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    cout << "=== Вычисление значения полинома ===\n";
+void ConsoleApplication::handleEvaluateDouble()
+{
+    cout << "\n--- Вычисление значения полинома (double) ---\n";
     cout << "Полином: ";
-    polinom.printForm1(cout);
+    realPolinom->printForm1(cout);
     cout << endl;
 
     cout << "Введите точку x: ";
-    number x;
+    double x;
     cin >> x;
 
-    if (cin.fail()) {
-        cout << "Ошибка ввода!\n";
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        return;
-    }
-
-    number result = polinom.evaluate(x);
-    cout << "Значение полинома в точке x = " << x << " равно: " << result << endl;
+    double result = realPolinom->evaluate(x);
+    cout << "P(" << x << ") = " << result << endl;
 }
 
-// Изменение степени полинома
-void ConsoleApplication::handleResize() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    cout << "=== Изменение степени полинома ===\n";
-    cout << "Текущая степень: " << polinom.getDegree() << endl;
+void ConsoleApplication::handleResizeDouble()
+{
+    cout << "\n--- Изменение степени полинома (double) ---\n";
+    cout << "Текущая степень: " << realPolinom->getDegree() << endl;
     cout << "Текущий полином: ";
-    polinom.printForm2(cout);
+    realPolinom->printForm2(cout);
     cout << endl;
 
     cout << "Введите новую степень: ";
     size_t newDegree;
     cin >> newDegree;
 
-    if (cin.fail()) {
-        cout << "Ошибка ввода!\n";
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        return;
-    }
+    realPolinom->resize(newDegree);
+    cout << "✓ Степень изменена.\n";
+}
 
-    polinom.resize(newDegree);
-    cout << "Степень изменена. Новый полином:\n";
-    polinom.printForm2(cout);
+void ConsoleApplication::handleDisplayForm1Double()
+{
+    cout << "\n--- Полином (форма 1, double) ---\n";
+    realPolinom->printForm1(cout);
     cout << endl;
 }
 
-// Вывод полинома в форме 1
-void ConsoleApplication::handleDisplayForm1() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
+void ConsoleApplication::handleDisplayForm2Double()
+{
+    cout << "\n--- Полином (форма 2, double) ---\n";
+    realPolinom->printForm2(cout);
+    cout << endl;
+}
 
-    cout << "=== Полином (форма 1: an*x^n + ... + a0) ===\n";
-    if (polinom.getDegree() == 0 && polinom.getLeadingCoeff() == number(0.0)) {
-        cout << "Полином нулевой.\n";
-    } else {
-        polinom.printForm1(cout);
-        cout << endl;
+void ConsoleApplication::handlePrintRootsDouble()
+{
+    cout << "\n--- Корни полинома (double) ---\n";
+    const Array<double>& roots = realPolinom->getRoots();
+    for (size_t i = 0; i < roots.getSize(); ++i) {
+        cout << "  r" << i << " = " << roots[i] << endl;
     }
 }
 
-// Вывод полинома в форме 2
-void ConsoleApplication::handleDisplayForm2() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    cout << "=== Полином (форма 2: an*(x - r1)*...*(x - rn)) ===\n";
-    if (polinom.getDegree() == 0 && polinom.getLeadingCoeff() == number(0.0)) {
-        cout << "Полином нулевой.\n";
-    } else {
-        polinom.printForm2(cout);
-        cout << endl;
-    }
-}
-
-// Вывод корней полинома
-void ConsoleApplication::handlePrintRoots() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    cout << "=== Корни полинома ===\n";
-    size_t degree = polinom.getDegree();
-
-    if (degree == 0) {
-        cout << "Полином нулевой степени, корней нет.\n";
-        return;
-    }
-
-    const Array& roots = polinom.getRoots();
-    for (size_t i = 0; i < degree; ++i) {
-        cout << "r" << i << " = " << roots[i] << endl;
-    }
-}
-
-// Вывод коэффициентов полинома
-void ConsoleApplication::handlePrintCoeffs() {
-    if (!polinomExists) {
-        cout << "Ошибка: полином не создан. Сначала введите полином (команда 1).\n";
-        return;
-    }
-
-    cout << "=== Коэффициенты полинома ===\n";
-    size_t degree = polinom.getDegree();
-
-    cout << "Коэффициенты полинома (от старшей степени к младшей):\n";
+void ConsoleApplication::handlePrintCoeffsDouble()
+{
+    cout << "\n--- Коэффициенты полинома (double) ---\n";
+    cout << "Коэффициенты (от старшей степени к младшей):\n";
+    size_t degree = realPolinom->getDegree();
     for (size_t i = degree; i > 0; --i) {
-        cout << "a" << i << " = " << polinom.getCoefficient(i) << endl;
+        cout << "  a" << i << " = " << realPolinom->getCoefficient(i) << endl;
     }
-    cout << "a0 = " << polinom.getCoefficient(0) << endl;
+    cout << "  a0 = " << realPolinom->getCoefficient(0) << endl;
 }
 
-// Запуск приложения
-void ConsoleApplication::run() {
+// ==================== Реализация для TComplex (базовая) ====================
+
+void ConsoleApplication::handleInputComplex()
+{
+    cout << "\n=== Ввод нового полинома (TComplex) ===\n";
+    cout << "Формат: an degree r1 r2 ... rn\n";
+    cout << "Формат числа: (re,im) или re+imi\n";
+    cout << "Пример: (1,0) 2 (1,0) (2,0)\n";
+    cout << "Ваш ввод: ";
+
+    // Очищаем буфер
+    cin.clear();
+    cin.ignore(10000, '\n');
+
+    string line;
+    getline(cin, line);
+
+    while (line.empty()) {
+        getline(cin, line);
+    }
+
+    stringstream ss(line);
+
+    TComplex an;
+    ss >> an;
+    if (ss.fail()) {
+        cout << "Ошибка ввода старшего коэффициента!\n";
+        polinomExists = false;
+        return;
+    }
+
+    size_t degree;
+    ss >> degree;
+    if (ss.fail()) {
+        cout << "Ошибка ввода степени!\n";
+        polinomExists = false;
+        return;
+    }
+
+    Array<TComplex> roots;
+    bool success = true;
+
+    for (size_t i = 0; i < degree; ++i) {
+        TComplex root;
+        ss >> root;
+        if (ss.fail()) {
+            cout << "Ошибка ввода корня " << i << "!\n";
+            success = false;
+            break;
+        }
+        roots.pushBack(root);
+    }
+
+    if (success) {
+        if (complexPolinom) delete complexPolinom;
+        complexPolinom = new Polinom<TComplex>(an, roots);
+        polinomExists = true;
+        cout << "✓ Полином (TComplex) успешно создан.\n";
+    } else {
+        cout << "Ошибка ввода! Полином не создан.\n";
+        polinomExists = false;
+    }
+}
+
+void ConsoleApplication::handleChangeCoeffOrRootComplex()
+{
+    cout << "\n--- Изменение параметров полинома (TComplex) ---\n";
+    cout << "Текущий полином: ";
+    complexPolinom->printForm2(cout);
+    cout << endl;
+
+    cout << "Что изменить?\n";
+    cout << "1. Старший коэффициент an\n";
+    cout << "2. Корень по индексу\n";
+    cout << "Ваш выбор: ";
+
+    int subChoice;
+    cin >> subChoice;
+
+    if (subChoice == 1) {
+        cout << "Текущий an = " << complexPolinom->getLeadingCoeff() << endl;
+        cout << "Введите новое значение an: ";
+        TComplex an;
+        cin >> an;
+        complexPolinom->setLeadingCoeff(an);
+        cout << "✓ Старший коэффициент изменен.\n";
+    } else if (subChoice == 2) {
+        size_t degree = complexPolinom->getDegree();
+        if (degree == 0) {
+            cout << "Полином нулевой степени, корней нет.\n";
+            return;
+        }
+
+        cout << "Текущие корни:\n";
+        const Array<TComplex>& roots = complexPolinom->getRoots();
+        for (size_t i = 0; i < roots.getSize(); ++i) {
+            cout << "  r" << i << " = " << roots[i] << endl;
+        }
+
+        cout << "Введите индекс корня (0.." << degree - 1 << "): ";
+        size_t index;
+        cin >> index;
+
+        if (index < degree) {
+            cout << "Текущее значение r" << index << " = " << complexPolinom->getRoot(index) << endl;
+            cout << "Введите новое значение: ";
+            TComplex value;
+            cin >> value;
+            complexPolinom->setRoot(index, value);
+            cout << "✓ Корень изменен.\n";
+        } else {
+            cout << "Неверный индекс!\n";
+        }
+    }
+}
+
+void ConsoleApplication::handleEvaluateComplex()
+{
+    cout << "\n--- Вычисление значения полинома (TComplex) ---\n";
+    cout << "Полином: ";
+    complexPolinom->printForm1(cout);
+    cout << endl;
+
+    cout << "Введите точку x: ";
+    TComplex x;
+    cin >> x;
+
+    TComplex result = complexPolinom->evaluate(x);
+    cout << "P(" << x << ") = " << result << endl;
+}
+
+void ConsoleApplication::handleResizeComplex()
+{
+    cout << "\n--- Изменение степени полинома (TComplex) ---\n";
+    cout << "Текущая степень: " << complexPolinom->getDegree() << endl;
+    cout << "Текущий полином: ";
+    complexPolinom->printForm2(cout);
+    cout << endl;
+
+    cout << "Введите новую степень: ";
+    size_t newDegree;
+    cin >> newDegree;
+
+    complexPolinom->resize(newDegree);
+    cout << "✓ Степень изменена.\n";
+}
+
+void ConsoleApplication::handleDisplayForm1Complex()
+{
+    cout << "\n--- Полином (форма 1, TComplex) ---\n";
+    complexPolinom->printForm1(cout);
+    cout << endl;
+}
+
+void ConsoleApplication::handleDisplayForm2Complex()
+{
+    cout << "\n--- Полином (форма 2, TComplex) ---\n";
+    complexPolinom->printForm2(cout);
+    cout << endl;
+}
+
+void ConsoleApplication::handlePrintRootsComplex()
+{
+    cout << "\n--- Корни полинома (TComplex) ---\n";
+    const Array<TComplex>& roots = complexPolinom->getRoots();
+    for (size_t i = 0; i < roots.getSize(); ++i) {
+        cout << "  r" << i << " = " << roots[i] << endl;
+    }
+}
+
+void ConsoleApplication::handlePrintCoeffsComplex()
+{
+    cout << "\n--- Коэффициенты полинома (TComplex) ---\n";
+    cout << "Коэффициенты (от старшей степени к младшей):\n";
+    size_t degree = complexPolinom->getDegree();
+    for (size_t i = degree; i > 0; --i) {
+        cout << "  a" << i << " = " << complexPolinom->getCoefficient(i) << endl;
+    }
+    cout << "  a0 = " << complexPolinom->getCoefficient(0) << endl;
+}
+
+// ==================== Главный цикл ====================
+
+void ConsoleApplication::run()
+{
     cout << "========================================\n";
-    cout << "   КОНСОЛЬНОЕ ПРИЛОЖЕНИЕ ДЛЯ РАБОТЫ\n";
-    cout << "         С ПОЛИНОМОМ (COMPLEX)\n";
+    cout << "   КОНСОЛЬНОЕ ПРИЛОЖЕНИЕ\n";
     cout << "========================================\n";
-    cout << "Полином не создан. Используйте команду 1 для ввода.\n";
+
+    selectDataType();
 
     while (running) {
         showMenu();
+        cout << "> ";
 
         int choice;
         cin >> choice;
@@ -310,41 +541,26 @@ void ConsoleApplication::run() {
         if (cin.fail()) {
             cout << "Ошибка ввода! Пожалуйста, введите число.\n";
             cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cin.ignore(10000, '\n');
             continue;
         }
 
         switch (choice) {
-        case 1:
-            handleInput();
-            break;
-        case 2:
-            handleChangeCoeffOrRoot();
-            break;
-        case 3:
-            handleEvaluate();
-            break;
-        case 4:
-            handleResize();
-            break;
-        case 5:
-            handleDisplayForm1();
-            break;
-        case 6:
-            handleDisplayForm2();
-            break;
-        case 7:
-            handlePrintRoots();
-            break;
-        case 8:
-            handlePrintCoeffs();
-            break;
+        case 1: handleInput(); break;
+        case 2: handleChangeCoeffOrRoot(); break;
+        case 3: handleEvaluate(); break;
+        case 4: handleResize(); break;
+        case 5: handleDisplayForm1(); break;
+        case 6: handleDisplayForm2(); break;
+        case 7: handlePrintRoots(); break;
+        case 8: handlePrintCoeffs(); break;
+        case 9: selectDataType(); break;
         case 0:
-            cout << "Завершение работы приложения...\n";
+            cout << "Завершение работы...\n";
             running = false;
             break;
         default:
-            cout << "Неверная команда! Пожалуйста, выберите 0-8.\n";
+            cout << "Неверная команда! Пожалуйста, выберите 0-9.\n";
         }
     }
 }
