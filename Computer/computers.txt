@@ -1,0 +1,49 @@
+6
+Intel Core i5-10400
+3.2
+ASUS Prime B460
+WD Blue 1TB
+NVIDIA GTX 1650
+1
+25000
+3
+AMD Ryzen 5 3600
+3.6
+MSI B450 Tomahawk
+Seagate Barracuda 2TB
+NVIDIA RTX 3060
+0
+32000
+2
+Intel Core i7-10700K
+3.8
+Gigabyte Z490
+Samsung EVO 500GB
+NVIDIA RTX 3070
+1
+45000
+1
+AMD Ryzen 3 3200G
+3.2
+ASRock A320
+WD Green 240GB
+AMD Radeon Vega 8
+0
+18000
+5
+Intel Core i3-10100
+3.0
+MSI H410
+Toshiba 1TB
+Intel UHD 630
+1
+22000
+4
+AMD Ryzen 7 5800X
+3.9
+ASUS X570
+Samsung 970 EVO 1TB
+NVIDIA RTX 3080
+1
+55000
+1
