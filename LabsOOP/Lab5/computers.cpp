@@ -29,9 +29,12 @@ Computers::~Computers() {
 	delete [] this->data;
 }
 
-int Computers::get_size() const {
-	return this->size;
+void Computers::operator+=(const Computer& c) {
+	if (size < capacity) {
+		data[size++] = c;
+	}
 }
+
 
 void Computers::add_computer(const Computer& comp) {
 	// if (size + 1 > capacity) {
@@ -48,17 +51,15 @@ void Computers::add_computer(const Computer& comp) {
 	}
 }
 
-void Computers::remove_computer(int index) {
-	if (index > size - 1 || index < 0) {
+void Computers::remove_computer(int index)
+{
+    if (index > size - 1 || index < 0) {
 		cout << "Error removing" << endl;
-		exit(1);
 	}
-	if (size > 0) {
-		for (int i = index; i < size - 1; ++i) {
-			data[i] = data[i + 1];
-		}
-		size--;
+	for (int i = index; i < size - 1; ++i) {
+	    data[i] = data[i + 1];
 	}
+	size--;
 }
 
 void Computers::read_from_file(const std::string& filename) {
@@ -66,7 +67,6 @@ void Computers::read_from_file(const std::string& filename) {
 	file.open(filename);
 	if (!file.is_open()) {
 		cout << "Error reading file" << endl;
-		file.close();
 		return;
 	}
 	int n;
@@ -74,8 +74,10 @@ void Computers::read_from_file(const std::string& filename) {
 	clearf(file);
 	for (int i = 0; i < n; ++i) {
 		Computer c;
-		c.read_from_file(file);
-		this->add_computer(c);
+		// c.read_from_file(file);
+		file >> c;
+		// this->add_computer(c);
+		*this += c;
 	}
 	file.close();
 	return;
@@ -86,13 +88,12 @@ void Computers::save_to_file(const std::string& filename) {
 	output.open(filename);
 	if (!output.is_open()) {
 		cout << "Output file error" << endl;
-		return;
 	}
-	output << this->size << "\n";
 	for (int i = 0; i < this->size; ++i) {
-		this->data[i].write_to_file(output);
+		output << this->data[i] << endl;
 	}
 	output.close();
+	return;
 }
 
 
@@ -116,26 +117,10 @@ int Computers::max_freq(int price_min, int price_max) {
 	return max_clock;
 }
 
-void Computers::print_at(int index) {
-	if (index >= 0 && index < size) {
-		data[index].print_computer();
-	}
-}
-
-void Computers::edit_computer(int index) {
-	if (index < 0 || index >= size) {
-		cout << "Неверный индекс." << endl;
-		return;
-	}
-	cout << "Текущие данные:" << endl;
-	data[index].print_computer();
-	cout << "Введите новые данные:" << endl;
-	data[index].read_from_stdin();
-}
-
 void Computers::print() {
 	for (int i = 0; i < this->size; ++i) {
-		this->data[i].print_computer();
+		// this->data[i].print_computer();
+		cout << this->data[i] << endl;
 	}
 }
 
@@ -149,17 +134,32 @@ void Computers::task1() {
 void Computers::task2(int price_min, int price_max) {
 	int max_clock = this->max_freq(price_min, price_max);
 	if (max_clock == -10000000) {
-		cout << "Нет компьютеров в диапазоне цен " << price_min << "-" << price_max << "р!" << endl;
+		cout << "No computers in price range " << price_min << "-" << price_max << " rub!" << endl;
 	} else {
-		cout << "Все ПК с самой высокой тактовой частотой с ценой " << price_min << "-" << price_max << ":" << endl;
+		cout << "All PCs with the highest clock speed in price range " << price_min << "-" << price_max << ":" << endl;
 		int k = 0;
 		for (int i = 0; i < this->size; ++i) {
 			if (this->data[i].get_price() >= price_min && this->data[i].get_price() <= price_max &&
 			    this->data[i].get_clock() == max_clock) {
 				k++;
 				cout << k << "." << endl;
-				this->data[i].print_computer();
+				cout << this->data[i];
 			}
 		}
 	}
+}
+
+int Computers::get_size() {
+	return this->size;
+}
+
+void Computers::edit(int index) {
+	if (index < 0 || index >= this->size) {
+		cout << "Invalid index." << endl;
+		return;
+	}
+	cout << "Current data:" << endl;
+	cout << data[index];
+	cout << "Enter new data:" << endl;
+	cin >> data[index];
 }

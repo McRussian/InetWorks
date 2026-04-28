@@ -85,25 +85,25 @@ void Computer::write_to_file(ofstream &output) {
 }
 
 void Computer::print_computer() {
-	cout << "Процессор: " << this->cpu_brand << endl;
-	cout << "   Частота: " << this->cpu_clock << endl;
-	cout << "   Мат. плата: " << this->motherboard << endl;
+	cout << "CPU: " << this->cpu_brand << endl;
+	cout << "   Clock: " << this->cpu_clock << endl;
+	cout << "   Motherboard: " << this->motherboard << endl;
 	cout << "   HDD: " << this->harddrive << endl;
 	cout << "   Video: " << this->videocard << endl;
 	cout << "   Wifi: " << this->wifi << endl;
-	cout << "   Цена: " << this->price << endl;
-	cout << "   На складе: " << this->store << endl;
+	cout << "   Price: " << this->price << endl;
+	cout << "   In stock: " << this->store << endl;
 	cout << endl;
 }
 
 void Computer::print_computer_file(ofstream &output) {
-	output << "Процессор: " << this->cpu_brand << endl;
-	output << "   Частота: " << this->cpu_clock << endl;
-	output << "   Мат. плата: " << this->motherboard << endl;
+	output << "CPU: " << this->cpu_brand << endl;
+	output << "   Clock: " << this->cpu_clock << endl;
+	output << "   Motherboard: " << this->motherboard << endl;
 	output << "   HDD: " << this->harddrive << endl;
 	output << "   Video: " << this->videocard << endl;
 	output << "   Wifi: " << this->wifi << endl;
-	output << "   Цена: " << this->price << endl;
-	output << "   На складе: " << this->store << endl;
+	output << "   Price: " << this->price << endl;
+	output << "   In stock: " << this->store << endl;
 	output << endl;
 }
